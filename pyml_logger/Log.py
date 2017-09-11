@@ -20,13 +20,17 @@ class Log:
             log.add_dynamic_value("perf",perf)
             log.add_dynamic_value("iteration",t)
     '''
-    def __init__(self):
+    def __init__(self,use_tensorboard=False):
         self.svar={}
         self.dvar=[]
         self.t=-1
         self.scopes=[]
         self.file=None
         self.vis=None
+        self.tb_write=None
+        if (use_tensorboard):
+            from tensorboardX import SummaryWriter
+            self.tb_writer = SummaryWriter()
 
     def add_static_value(self,key,value):
         self.svar[key]=value
@@ -59,6 +63,11 @@ class Log:
             tt=tt[s]
 
         tt[key]=value
+
+        if (self.tb_writer is None):
+            if (isinstance(value,int) or isinstance(value,float)):
+                self.tb_writer.add_scalar('/'.join(self.scopes)+"/"+key, value,len(self.dvar))
+
 
     def get_last_dynamic_value(self,key):
         key=".".join(self.scopes)+key
@@ -108,7 +117,7 @@ class Log:
             tt=tt[s]
         return tt
 
-    def save_file(self,filename=None,directory=None):
+    def save(self,filename=None,directory=None):
         if (directory is None):
             directory="logs"
 
@@ -146,7 +155,7 @@ class Log:
             retour.append(cn)
         return retour
 
-    def plot_line(self,column_names,win=None,opts={}):
+    def plot_line_visdom(self,column_names,win=None,opts={}):
         if (len(self.dvar)<=1):
             return None
 
@@ -172,7 +181,7 @@ class Log:
 
     def to_extended_array(self):
         '''
-        Transforms the dynamic values to an array
+        Transforms the dynamic+static  values to an array
         '''
         names = self._generate_columns_names()
         names["_iteration"] = 1

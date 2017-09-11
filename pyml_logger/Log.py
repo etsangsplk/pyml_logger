@@ -162,14 +162,10 @@ class Log:
             r.append(rr)
             X.append(t)
 
-        print(np.array(r).shape)
-        print(column_names)
-        print(np.array(X).ndim)
         opts_={}
         opts_["legend"]=column_names
         for k in opts:
             opts_[k]=opts[k]
-        print(opts_)
         return self.vis.line(X=np.array(X),Y=np.array(r),opts=opts_,win=win)
         #options={"legend":column_names}
 

@@ -2,7 +2,6 @@ from datetime import datetime,date,time
 import os.path
 import pickle
 import pandas as pd
-import visdom
 import numpy as np
 
 class Log:
@@ -20,13 +19,13 @@ class Log:
             log.add_dynamic_value("perf",perf)
             log.add_dynamic_value("iteration",t)
     '''
-    def __init__(self):
+    def __init__(self,use_tensorboard=False):
         self.svar={}
         self.dvar=[]
         self.t=-1
         self.scopes=[]
         self.file=None
-        self.vis=None
+
 
     def add_static_value(self,key,value):
         self.svar[key]=value
@@ -59,6 +58,7 @@ class Log:
             tt=tt[s]
 
         tt[key]=value
+
 
     def get_last_dynamic_value(self,key):
         key=".".join(self.scopes)+key
@@ -108,7 +108,7 @@ class Log:
             tt=tt[s]
         return tt
 
-    def save_file(self,filename=None,directory=None):
+    def save(self,filename=None,directory=None):
         if (directory is None):
             directory="logs"
 
@@ -146,37 +146,11 @@ class Log:
             retour.append(cn)
         return retour
 
-    def plot_line(self,column_names,win=None,opts={}):
-        if (len(self.dvar)<=1):
-            return None
-
-        if (self.vis is None):
-            self.vis=visdom.Visdom()
-
-        r=[]
-        X=[]
-        for t in range(len(self.dvar)):
-            rr=[]
-            for c in column_names:
-                rr.append(self.get_scoped_value(t,c))
-            r.append(rr)
-            X.append(t)
-
-        print(np.array(r).shape)
-        print(column_names)
-        print(np.array(X).ndim)
-        opts_={}
-        opts_["legend"]=column_names
-        for k in opts:
-            opts_[k]=opts[k]
-        print(opts_)
-        return self.vis.line(X=np.array(X),Y=np.array(r),opts=opts_,win=win)
-        #options={"legend":column_names}
 
 
     def to_extended_array(self):
         '''
-        Transforms the dynamic values to an array
+        Transforms the dynamic+static  values to an array
         '''
         names = self._generate_columns_names()
         names["_iteration"] = 1
@@ -262,3 +236,77 @@ def logs_to_dataframe(filenames):
             retour.append(new_line)
 
     return pd.DataFrame(data=retour,columns=all_names)
+
+
+class VisdomLog(Log):
+
+    def __init__(self,env='main',update_every=10):
+        import visdom
+        print("Creating Visdom environment :"+env)
+        Log.__init__(self)
+        self.vis=visdom.Visdom(env=env)
+        self.observer_line=[]
+        self.update_every=update_every
+        self.last_update=0
+
+    def observe_as_line(self,column_names,opts={}):
+        self.observer_line.append((None,column_names,opts))
+
+    def new_iteration(self):
+        Log.new_iteration(self)
+
+        if (len(self.dvar)<2):
+            return
+        if ((len(self.dvar)-1)%self.update_every!=0):
+            return
+        #Update lines
+        pos=0
+        for pos in range(len(self.observer_line)):
+            o=self.observer_line[pos]
+            column_names=o[1]
+            win=o[0]
+            opts=o[2]
+            val=self._get_np_values(column_names,_from=self.last_update)
+            if(not val is None):
+                X=val[0]
+                Y=val[1]
+                if (win is None):
+                    opts_ = {}
+                    opts_["legend"] = column_names
+                    for k in opts:
+                        opts_[k] = opts[k]
+                    self.observer_line[pos]=(self.vis.line(X=X, Y=Y, opts=opts_),o[1],o[2])
+                else:
+                    self.vis.updateTrace(X=X,Y=Y,win=win)
+            pos+=1
+        self.last_update+=self.update_every
+
+    def _get_np_values(self, column_names,_from=0):
+        Y=[]
+        X=[]
+        _to=len(self.dvar)
+        if (len(self.dvar[-1])==0):
+            _to-=1
+
+        for t in range(_from, _to):
+            _val = []
+            _x=[]
+            all_none=True
+            for c in column_names:
+                v=self.get_scoped_value(t, c)
+                if (not v is None):
+                    all_none=False
+                else:
+                    v=0
+                _val.append(v)
+                _x.append(t)
+
+            if (not all_none):
+                Y.append(_val)
+                X.append(_x)
+        if (len(X)==0):
+            return None
+        if (len(Y[0])==1):
+            Y=Y[0]
+            X=X[0]
+        return (np.array(X),np.array(Y))

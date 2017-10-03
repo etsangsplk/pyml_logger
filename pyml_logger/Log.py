@@ -242,7 +242,7 @@ class VisdomLog(Log):
 
     def __init__(self,env='main',update_every=10):
         import visdom
-
+        print("Creating Visdom environment :"+env)
         Log.__init__(self)
         self.vis=visdom.Visdom(env=env)
         self.observer_line=[]

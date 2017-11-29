@@ -240,11 +240,11 @@ def logs_to_dataframe(filenames):
 
 class VisdomLog(Log):
 
-    def __init__(self,env='main',update_every=10):
+    def __init__(self,env='main',server="http://localhost",update_every=10):
         import visdom
         print("Creating Visdom environment :"+env)
         Log.__init__(self)
-        self.vis=visdom.Visdom(env=env)
+        self.vis=visdom.Visdom(env=env,server=server)
         self.observer_line=[]
         self.update_every=update_every
         self.last_update=0

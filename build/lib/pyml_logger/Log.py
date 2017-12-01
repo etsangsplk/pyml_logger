@@ -19,9 +19,10 @@ class Log:
             log.add_dynamic_value("perf",perf)
             log.add_dynamic_value("iteration",t)
     '''
-    def __init__(self,use_tensorboard=False):
+    def __init__(self,experiment=None):
         self.svar={}
         self.dvar=[]
+        self.svar["experiment"]=experiment
         self.t=-1
         self.scopes=[]
         self.file=None
@@ -240,11 +241,11 @@ def logs_to_dataframe(filenames):
 
 class VisdomLog(Log):
 
-    def __init__(self,env='main',update_every=10):
+    def __init__(self,experiment=None,env='main',server="http://localhost",update_every=10):
         import visdom
         print("Creating Visdom environment :"+env)
-        Log.__init__(self)
-        self.vis=visdom.Visdom(env=env)
+        Log.__init__(self,experiment=experiment)
+        self.vis=visdom.Visdom(env=env,server=server)
         self.observer_line=[]
         self.update_every=update_every
         self.last_update=0

@@ -19,9 +19,10 @@ class Log:
             log.add_dynamic_value("perf",perf)
             log.add_dynamic_value("iteration",t)
     '''
-    def __init__(self,use_tensorboard=False):
+    def __init__(self,experiment=None):
         self.svar={}
         self.dvar=[]
+        self.svar["experiment"]=experiment
         self.t=-1
         self.scopes=[]
         self.file=None
@@ -59,7 +60,6 @@ class Log:
 
         tt[key]=value
 
-
     def get_last_dynamic_value(self,key):
         key=".".join(self.scopes)+key
         return self.dvar[self.t][key]
@@ -69,6 +69,36 @@ class Log:
         for d in self.dvar:
             c.append(d[key])
         return c
+
+    def flatten(self):
+        '''
+
+        '''
+
+        names = self._generate_columns_names()
+        names["_iteration"] = 1
+
+        for k in self.svar:
+            names["_s_" + k] = 1
+
+        retour = []
+        cn = []
+        for l in names:
+            cn.append(l)
+        retour.append(cn)
+
+        for t in range(len(self.dvar)):
+            cn = []
+            for l in names:
+                if (l.startswith('_s_')):
+                    cn.append(self.svar[l[3:]])
+                elif (l == "_iteration"):
+                    cn.append(t)
+                else:
+                    v = self.get_scoped_value(t, l)
+                    cn.append(v)
+            retour.append(cn)
+        return retour
 
     def print_static(self):
         print("===== STATIC VARIABLES =========")
@@ -240,10 +270,10 @@ def logs_to_dataframe(filenames):
 
 class VisdomLog(Log):
 
-    def __init__(self,env='main',server="http://localhost",update_every=10):
+    def __init__(self,experiment=None,env='main',server="http://localhost",update_every=10):
         import visdom
         print("Creating Visdom environment :"+env)
-        Log.__init__(self)
+        Log.__init__(self,experiment=experiment)
         self.vis=visdom.Visdom(env=env,server=server)
         self.observer_line=[]
         self.update_every=update_every

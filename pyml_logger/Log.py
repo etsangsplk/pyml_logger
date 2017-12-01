@@ -3,7 +3,7 @@ import os.path
 import pickle
 import pandas as pd
 import numpy as np
-
+import logging
 class Log:
     '''
     A log is composed of:
@@ -33,7 +33,7 @@ class Log:
 
     def new_iteration(self):
         if (self.t>=0):
-            print(self.dvar[self.t])
+            logging.info(self.dvar[self.t])
 
         self.t=self.t+1
         self.dvar.append({})
